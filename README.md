@@ -1,1 +1,3 @@
-# NFL-analysis
+# Analysis of Performance and Predictive Modeling in the NFL Regular Season
+
+This report examines the predictive modeling of NFL quarterbacks' performances using linear regression to forecast Passing Expected Points Added (EPA). Analyzing 2023 season data, we trained a model with early-season games and tested its predictions against later games, achieving an RMSE of 5.14. The results, including a scatterplot and residuals analysis, suggest moderate accuracy with room for improvement. Recommendations for model refinement are discussed, with implications for enhancing team strategy and performance analysis.

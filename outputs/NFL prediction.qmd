@@ -1,0 +1,105 @@
+---
+title: "Analysis of Performance and Predictive Modeling in the NFL Regular Season"
+author: Xiyou Wang, Yetao Guo
+thanks: "Code and data are available at: https://github.com/wxywxy666/NFL-analysis."
+date: "`r format(Sys.time(), '%d %B %Y')`"
+toc: true
+toc-title: "Contents"
+number-sections: true
+bibliography: references.bib
+format: pdf
+---
+```{r setup, include=FALSE}
+library(nflverse)
+library(parsnip)
+library(dplyr)
+library(tidymodels)
+library(yardstick)
+library(ggplot2)
+
+qb_regular_season_stats <- 
+  load_player_stats(seasons = TRUE) |> 
+  filter(season_type == "REG" & position == "QB")
+```
+# Introduction
+The quarterback position in the National Football League (NFL) is often considered the most pivotal role. The ability to predict the performance of the quarterback can provide valuable insights for teams and coaches to help them develop game plans. The purpose of this report is to analyze the performance of the quarterback during the 2023 NFL regular season and to use a linear regression model to predict the expected passing increase (EPA). We will evaluate the predictive ability of this model to provide guidance for decision-making for the remainder of the season.
+
+# Methodology
+## Data Collection
+The analysis was performed in R code [@R], using data from the NFLverse package [@nflverse], which compiles extensive statistics on NFL games and players. The data consists of various performance metrics for quarterbacks, including completions, attempts, passing yards, touchdowns, and interceptions, along with the `passing_epa`, which is a key measure of a player's contribution to the team's scoring chances.
+
+## Data Preparation
+Packages parsnip [@parsnip], dplyr [@dplyr], tidymodels [@tidymodels] and yardstick [@yardstick] are used to clean the raw dataset.
+
+The cleaned dataset was filtered to isolate the performance metrics for quarterbacks during regular season games. A subset of the data from weeks 1 to 9 of the 2023 season was used to train the regression model, while the remainder of the data from previous seasons served as the testing set to validate the model's forecasts.
+
+# Results
+## Visualization of Predictions
+```{r echo = FALSE, warning=FALSE}
+#| label: fig-1
+#| fig-cap: "Scatterplot of Actual vs. Predicted Passing EPA"
+qb_regular_season_stats <- load_player_stats(seasons = 2023) %>% 
+  filter(season_type == "REG" & position == "QB")
+
+# Split the data into weeks 1 to 9 and weeks 10 to 18 from previous seasons
+train_set <- qb_regular_season_stats %>% 
+  filter(week <= 9)
+
+test_set <- qb_regular_season_stats %>% 
+  filter(week >= 10)
+
+train_set <- train_set %>% 
+  select(completions, attempts, passing_yards, passing_tds, interceptions, passing_epa)
+
+test_set <- test_set %>% 
+  select(completions, attempts, passing_yards, passing_tds, interceptions, passing_epa)
+
+linear_reg <- linear_reg() %>% 
+  set_engine("lm") %>% 
+  set_mode("regression")
+
+formula <- passing_epa ~ completions + attempts + passing_yards + passing_tds + interceptions
+
+model <- linear_reg %>% 
+  fit(formula, data = train_set)
+
+predictions <- predict(model, new_data = test_set) %>% 
+  bind_cols(test_set)
+
+# Calculate RMSE
+rmse_val <- rmse(predictions, truth = passing_epa, estimate = .pred)
+
+
+# Create a scatterplot of actual vs. predicted passing_epa
+ggplot(predictions, aes(x = passing_epa, y = .pred)) +
+  geom_point(alpha = 0.5) +  # Add points with some transparency
+  geom_abline(intercept = 0, slope = 1, color = "blue", linetype = "dashed") +  # Add a dashed line for perfect predictions
+  labs(x = "Actual passing EPA", y = "Predicted passing EPA", title = "Actual vs. Predicted passing EPA") +
+  theme_minimal()  # Use a minimal theme for a nicer look
+```
+### Actual vs. Predicted Passing EPA
+@fig-1 shows the comparison of actual and predicted values by EPA values using a scatter plot.The blue dotted line represents the line of perfect prediction, where the predicted values and actual values match exactly.The density of points along the line indicates that the model’s accuracy is quite high, with many predictions being very close to actual performance.However, the significant dispersion of points above and below the line indicates that the model’s accuracy is volatile.For example, predictions with lower EPA values (both positive and negative) seem to be more volatile than those with higher EPA values.
+
+This volatility can be caused by a variety of factors, such as a nonlinear relationship between the predictor and EPA that the linear regression model fails to capture, or the influence of outliers due to abnormal performance or atypical play.It may also be that important predictors or interactions are missing from the model, leading to a failure to fit more complex patterns in the data.
+
+### Residual Analysis
+```{r echo = FALSE, warning=FALSE}
+#| label: fig-2
+#| fig-cap: "Residuals Plot for Actual vs. Predicted Passing EPA"
+# Add a residuals column to the predictions dataframe
+predictions <- predictions %>%
+  mutate(residuals = .pred - passing_epa)
+
+# Create a residual plot
+ggplot(predictions, aes(x = passing_epa, y = residuals)) +
+  geom_hline(yintercept = 0, color = "blue", linetype = "dashed") +  # Horizontal line at 0 for reference
+  geom_point(alpha = 0.5) +  # Add points with some transparency
+  labs(x = "Actual passing EPA", y = "Residuals", title = "Residuals of the Model's Predictions") +
+  theme_minimal()  # Use a minimal theme for a nicer look
+```
+@fig-2 shows the relationship between the errors in the model's predictions and the EPA values that actually passed. The errors (the difference between the predicted) and actual values are scattered around the zero point of the horizontal dotted line, indicating no errors. Ideally, the errors should be distributed randomly, without apparent patterns, meaning that the model's errors are not systematic. Although the distribution appears random, some points have larger errors, indicating larger prediction errors. This may indicate a limitation of the model in capturing the full complexity of quarterback performance or specific game instances that are not covered by typical statistical measures
+
+## Model Predictive Results
+The model's predictive ability, as shown by the actual and predicted values in the figure, is generally consistent with expected results, especially around the median of the EPA values that passed. The error plot shows that although the model is not biased in the prediction process, there is still room for improvement, especially for outliers.
+
+# Reference
