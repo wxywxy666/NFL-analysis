@@ -1,6 +1,6 @@
 ---
 title: "Analysis of Performance and Predictive Modeling in the NFL Regular Season"
-author: Xiyou Wang, Yetao Guo
+author: Xiyou Wang
 thanks: "Code and data are available at: https://github.com/wxywxy666/NFL-analysis."
 date: "`r format(Sys.time(), '%d %B %Y')`"
 toc: true
